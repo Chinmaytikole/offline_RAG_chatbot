@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocMind — AI Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #06b6d4;
+            --primary-dark: #0891b2;
+            --primary-light: #22d3ee;
+            --secondary: #10b981;
+            --accent: #7c3aed;
+            --bg-base: #070b14;
+            --bg-surface: #0d1117;
+            --bg-elevated: #161b27;
+            --bg-input: #1c2333;
+            --bg-user-msg: linear-gradient(135deg, #0891b2 0%, #0d9488 100%);
+            --bg-ai-msg: #161b27;
+            --text-primary: #e8f4f8;
+            --text-secondary: #94a3b8;
+            --text-muted: #4b5e73;
+            --border: rgba(6, 182, 212, 0.12);
+            --border-hover: rgba(6, 182, 212, 0.35);
+            --glow-sm: 0 0 12px rgba(6, 182, 212, 0.18);
+            --glow-md: 0 0 24px rgba(6, 182, 212, 0.22);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 50% 50% at 15% 15%, rgba(6, 182, 212, 0.05) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 40% at 85% 85%, rgba(124, 58, 237, 0.04) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Image overlay */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: none;
+            cursor: zoom-out;
+            align-items: center;
+            justify-content: center;
+        }
+        .overlay.active { display: flex; }
+
+        .enlarged-image {
+            position: fixed !important;
+            top: 50% !important; left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            z-index: 1001 !important;
+            width: auto !important; height: auto !important;
+            max-width: 92vw !important; max-height: 90vh !important;
+            object-fit: contain !important;
+            border-radius: var(--radius-md) !important;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8) !important;
+            cursor: zoom-out !important;
+        }
+
+        /* ── Main Layout ────────────────────────────────────────── */
+        .chat-container {
+            width: 100%;
+            max-width: 1200px;
+            height: 100vh;
+            background: var(--bg-surface);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+            border-left: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+        }
+
+        /* ── Header ─────────────────────────────────────────────── */
+        .chat-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            background: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(12px);
+            gap: 1rem;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            min-width: 0;
+        }
+
+        .header-back-btn {
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            text-decoration: none;
+        }
+
+        .header-back-btn:hover {
+            border-color: var(--border-hover);
+            color: var(--primary-light);
+            background: rgba(6, 182, 212, 0.06);
+        }
+
+        .bot-icon {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--glow-sm);
+            flex-shrink: 0;
+        }
+
+        .bot-icon svg { color: white; }
+
+        .header-info { min-width: 0; }
+
+        .header-info h1 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-info p {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .language-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .language-selector label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .language-selector select {
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.4rem 0.7rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+
+        .language-selector select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--glow-sm);
+        }
+
+        .language-selector select:hover { border-color: var(--border-hover); }
+
+        /* ── Messages ───────────────────────────────────────────── */
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            background: var(--bg-base);
+        }
+
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 2px; }
+        .chat-messages::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            max-width: 82%;
+            animation: msgIn 0.25s ease-out;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: var(--bg-user-msg);
+            box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
+        }
+
+        .message.ai .message-avatar {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+        }
+
+        .message-avatar svg { color: white; }
+
+        .message-content {
+            padding: 0.85rem 1rem;
+            border-radius: var(--radius-lg);
+            line-height: 1.65;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.user .message-content {
+            background: var(--bg-user-msg);
+            color: white;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 14px rgba(6, 182, 212, 0.2);
+        }
+
+        .message.ai {
+            align-self: flex-start;
+        }
+
+        .message.ai .message-content {
+            background: var(--bg-ai-msg);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.error .message-content {
+            background: rgba(239, 68, 68, 0.06);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .message-content > ul {
+            margin: 0.6rem 0;
+            padding-left: 1.35rem;
+            list-style-type: disc;
+        }
+
+        .message-content > ul > li { margin: 0.35rem 0; }
+        .message-content > p { margin: 0.4rem 0; }
+        .message-content strong { color: var(--primary-light); }
+        .message-content small { color: var(--text-muted); font-size: 0.78rem; }
+
+        /* Language info in message */
+        .language-info {
+            background: rgba(6, 182, 212, 0.08);
+            border: 1px solid rgba(6, 182, 212, 0.15);
+            color: var(--primary-light);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        /* ── Images section ─────────────────────────────────────── */
+        .images-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .images-section h3 {
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .image-result {
+            position: relative;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: var(--bg-base);
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .image-result:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--glow-sm);
+            border-color: var(--border-hover);
+        }
+
+        .image-result img {
+            width: 100%;
+            height: 160px;
+            object-fit: contain;
+            background: rgba(0, 0, 0, 0.3);
+            display: block;
+            transition: transform 0.2s;
+        }
+
+        .image-result:hover img { transform: scale(1.02); }
+
+        .image-result div {
+            padding: 0.5rem 0.65rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* ── Citations ──────────────────────────────────────────── */
+        .citations-section {
+            margin-top: 1rem;
+            padding-top: 0.85rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .citations-section h4 {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-bottom: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .citations-list { display: flex; flex-direction: column; gap: 0.4rem; }
+
+        .citation-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.6rem 0.75rem;
+            background: rgba(6, 182, 212, 0.04);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .citation-item:hover {
+            background: rgba(6, 182, 212, 0.08);
+            border-color: var(--border-hover);
+            transform: translateX(3px);
+        }
+
+        .citation-item:hover .citation-arrow { opacity: 1; }
+
+        .citation-item.disabled { cursor: not-allowed; opacity: 0.5; }
+        .citation-item.disabled:hover { background: rgba(6, 182, 212, 0.04); border-color: var(--border); transform: none; }
+
+        .citation-icon { color: var(--primary); flex-shrink: 0; }
+        .citation-text { flex: 1; display: flex; flex-direction: column; gap: 0.15rem; }
+        .citation-title { color: var(--text-primary); font-size: 0.8rem; font-weight: 500; }
+        .citation-path { color: var(--text-muted); font-size: 0.68rem; font-family: 'Monaco', 'Consolas', monospace; }
+        .citation-arrow { color: var(--primary); opacity: 0; transition: all 0.15s; flex-shrink: 0; font-size: 0.8rem; }
+
+        /* ── Typing Indicator ───────────────────────────────────── */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0.25rem 0;
+        }
+
+        .typing-indicator span {
+            height: 7px;
+            width: 7px;
+            background: var(--primary-light);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ── Input Area ─────────────────────────────────────────── */
+        .chat-input-form {
+            display: flex;
+            align-items: flex-end;
+            padding: 1rem 1.25rem;
+            background: var(--bg-surface);
+            gap: 10px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .input-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .attachments-container {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            max-height: 74px;
+            overflow-y: auto;
+        }
+
+        .attachment-preview {
+            position: relative;
+            width: 54px;
+            height: 54px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+        }
+
+        .attachment-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+        .remove-attachment {
+            position: absolute;
+            top: 2px; right: 2px;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 16px; height: 16px;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .input-controls {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        textarea {
+            flex-grow: 1;
+            font-size: 0.9rem;
+            padding: 0.7rem 1rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            resize: none;
+            max-height: 120px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-family: inherit;
+            line-height: 1.55;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        textarea::placeholder { color: var(--text-muted); }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--glow-sm);
+        }
+
+        .attachment-btn, .mic-btn {
+            background: var(--bg-input);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            width: 40px; height: 40px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .attachment-btn:hover, .mic-btn:hover {
+            background: rgba(6, 182, 212, 0.08);
+            border-color: var(--border-hover);
+            color: var(--primary-light);
+        }
+
+        .mic-btn.recording {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #f87171;
+            animation: pulse-rec 1.5s infinite;
+        }
+
+        @keyframes pulse-rec {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+            70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        button[type="submit"] {
+            background: linear-gradient(135deg, var(--primary) 0%, #0891b2 100%);
+            color: white;
+            border: none;
+            width: 44px; height: 44px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.15s;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+        }
+
+        button[type="submit"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(6, 182, 212, 0.4);
+        }
+
+        button[type="submit"]:active { transform: translateY(0); }
+
+        button:disabled {
+            background: var(--bg-input) !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+            opacity: 0.4 !important;
+            transform: none !important;
+        }
+
+        .file-input { display: none; }
+
+        /* Recording indicator */
+        .recording-indicator {
+            position: absolute;
+            top: -38px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            animation: slideDown 0.2s ease-out;
+            z-index: 2;
+            white-space: nowrap;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        .recording-dot {
+            width: 7px; height: 7px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        /* Browser warning */
+        .browser-warning {
+            background: rgba(239, 68, 68, 0.06);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 0.72rem;
+            margin-top: 4px;
+            display: none;
+        }
+
+        /* ── PDF Modal ──────────────────────────────────────────── */
+        .pdf-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.96);
+            backdrop-filter: blur(12px);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .pdf-modal.active { display: flex; }
+
+        .pdf-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.85rem 1.5rem;
+            background: rgba(13, 17, 23, 0.95);
+            border-bottom: 1px solid var(--border);
+            gap: 1rem;
+        }
+
+        .pdf-modal-title {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pdf-modal-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .pdf-page-nav { display: flex; align-items: center; gap: 0.4rem; }
+
+        .pdf-control-btn {
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            padding: 0.4rem 0.85rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.78rem;
+            font-family: inherit;
+        }
+
+        .pdf-control-btn:hover {
+            background: rgba(6, 182, 212, 0.08);
+            border-color: var(--border-hover);
+            color: var(--primary-light);
+        }
+
+        .pdf-control-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .pdf-page-input {
+            width: 52px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.3rem 0.4rem;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            font-size: 0.8rem;
+            font-family: inherit;
+        }
+
+        .pdf-page-input:focus { outline: none; border-color: var(--primary); }
+
+        .pdf-modal-close {
+            background: rgba(239, 68, 68, 0.08);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 0.4rem 0.85rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.78rem;
+            font-family: inherit;
+        }
+
+        .pdf-modal-close:hover { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); }
+
+        .pdf-modal-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            overflow: auto;
+        }
+
+        .pdf-viewer {
+            width: 100%;
+            max-width: 900px;
+            height: 100%;
+            background: white;
+            border-radius: var(--radius-md);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .pdf-viewer iframe { width: 100%; height: 100%; border: none; border-radius: var(--radius-md); }
+
+        .pdf-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.85rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .pdf-loading-spinner {
+            width: 36px; height: 36px;
+            border: 2px solid rgba(6, 182, 212, 0.2);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ── Responsive ─────────────────────────────────────────── */
+        @media (max-width: 640px) {
+            .header-info h1 { font-size: 0.85rem; }
+            .language-selector label { display: none; }
+            .message { max-width: 88%; }
+            .image-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+            .attachment-btn, .mic-btn { width: 36px; height: 36px; }
+            button[type="submit"] { width: 40px; height: 40px; }
+            .chat-header { padding: 0.75rem 1rem; }
+            .chat-messages { padding: 1rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay"></div>
+
+    <div class="chat-container">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="header-left">
+                <a href="/home" class="header-back-btn" title="Back to home" aria-label="Back to home">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+                    </svg>
+                </a>
+                <div class="bot-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a8 8 0 0 1 8 8v4a8 8 0 0 1-16 0v-4a8 8 0 0 1 8-8z"/>
+                        <path d="M9 12h.01M15 12h.01M9.5 15.5a3.5 3.5 0 0 0 5 0"/>
+                    </svg>
+                </div>
+                <div class="header-info">
+                    <h1>DocMind Assistant</h1>
+                    <p>Ask questions about your documents in any language</p>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="language-selector">
+                    <label for="language-select">Language</label>
+                    <select id="language-select" aria-label="Select language">
+                        <option value="auto">Auto Detect</option>
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
+                        <option value="it">Italiano</option>
+                        <option value="pt">Português</option>
+                        <option value="zh">中文</option>
+                        <option value="ja">日本語</option>
+                        <option value="ko">한국어</option>
+                        <option value="ar">العربية</option>
+                        <option value="hi">हिन्दी</option>
+                        <option value="ru">Русский</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Messages -->
+        <div class="chat-messages" id="chat-messages">
+            <div class="message ai">
+                <div class="message-avatar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a8 8 0 0 1 8 8v4a8 8 0 0 1-16 0v-4a8 8 0 0 1 8-8z"/>
+                        <path d="M9 12h.01M15 12h.01M9.5 15.5a3.5 3.5 0 0 0 5 0"/>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <p>Hello! I'm your multilingual document assistant. I can help you:</p>
+                    <ul>
+                        <li><strong>Answer questions</strong> — in any of 12+ supported languages</li>
+                        <li><strong>Retrieve images</strong> — diagrams, charts, and figures from your PDFs</li>
+                        <li><strong>Cite sources</strong> — with clickable links back to the source document</li>
+                    </ul>
+                    <p><small>Try asking anything about your documents. Voice input is supported via the microphone button.</small></p>
+                    <div class="language-info" id="welcome-language-info">
+                        Language: Auto Detect — I'll identify your language automatically
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input -->
+        <form class="chat-input-form" id="qa-form">
+            <div class="input-wrapper">
+                <div class="attachments-container" id="attachments-container"></div>
+                <div class="input-controls">
+                    <input type="file" id="file-input" class="file-input" accept="image/*" multiple>
+
+                    <button type="button" class="attachment-btn" id="attachment-btn" title="Attach image" aria-label="Attach image">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                        </svg>
+                    </button>
+
+                    <textarea id="question" name="question" placeholder="Ask about your documents in any language…" required rows="1" aria-label="Type your question"></textarea>
+
+                    <button type="button" class="mic-btn" id="mic-btn" title="Voice input" aria-label="Voice input">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" x2="12" y1="19" y2="22"/>
+                        </svg>
+                    </button>
+
+                    <button type="submit" id="submit-btn" title="Send" aria-label="Send message">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 2 11 13M22 2l-7 20-4-9-9-4Z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="language-info" id="language-info"></div>
+                <div class="browser-warning" id="browser-warning"></div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('qa-form');
+        const questionInput = document.getElementById('question');
+        const submitBtn = document.getElementById('submit-btn');
+        const chatMessages = document.getElementById('chat-messages');
+        const overlay = document.getElementById('overlay');
+        const micBtn = document.getElementById('mic-btn');
+        const attachmentBtn = document.getElementById('attachment-btn');
+        const fileInput = document.getElementById('file-input');
+        const attachmentsContainer = document.getElementById('attachments-container');
+        const browserWarning = document.getElementById('browser-warning');
+        const languageSelect = document.getElementById('language-select');
+        const languageInfo = document.getElementById('language-info');
+        const welcomeLanguageInfo = document.getElementById('welcome-language-info');
+
+        let isRecording = false;
+        let recognition = null;
+        let attachments = [];
+        let currentLanguage = 'auto';
+
+        // ── Offline recording state ────────────────────────────────
+        let offlineRecording = false;
+        let offlineStream = null;
+        let offlineAudioCtx = null;
+        let offlineProcessor = null;
+        let offlineChunks = [];
+
+        // ── WAV encoder ────────────────────────────────────────────
+        function encodeWav(samples, sampleRate) {
+            const buf = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buf);
+            const writeStr = (off, str) => {
+                for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+            };
+            writeStr(0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            writeStr(8, 'WAVE');
+            writeStr(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);                    // PCM
+            view.setUint16(22, 1, true);                    // mono
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);       // byte rate
+            view.setUint16(32, 2, true);                    // block align
+            view.setUint16(34, 16, true);                   // bits per sample
+            writeStr(36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+            let offset = 44;
+            for (let i = 0; i < samples.length; i++, offset += 2) {
+                const s = Math.max(-1, Math.min(1, samples[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+            return new Blob([buf], { type: 'audio/wav' });
+        }
+
+        // ── Start capturing audio via AudioContext (offline path) ──
+        async function startOfflineRecording(stream) {
+            offlineAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            offlineStream = stream;
+            offlineChunks = [];
+            const source = offlineAudioCtx.createMediaStreamSource(stream);
+            // ScriptProcessorNode is deprecated but universally supported; fine for a local app
+            offlineProcessor = offlineAudioCtx.createScriptProcessor(4096, 1, 1);
+            offlineProcessor.onaudioprocess = (e) => {
+                offlineChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+            };
+            source.connect(offlineProcessor);
+            offlineProcessor.connect(offlineAudioCtx.destination);
+            offlineRecording = true;
+        }
+
+        // ── Stop, encode WAV, POST to /transcribe-offline ──────────
+        async function stopOfflineRecordingAndTranscribe() {
+            offlineRecording = false;
+            if (offlineProcessor) offlineProcessor.disconnect();
+            if (offlineStream) offlineStream.getTracks().forEach(t => t.stop());
+            if (offlineAudioCtx) { try { await offlineAudioCtx.close(); } catch (e) {} }
+
+            const totalLen = offlineChunks.reduce((s, c) => s + c.length, 0);
+            if (totalLen === 0) throw new Error('No audio captured');
+
+            const combined = new Float32Array(totalLen);
+            let pos = 0;
+            for (const chunk of offlineChunks) { combined.set(chunk, pos); pos += chunk.length; }
+
+            const wavBlob = encodeWav(combined, 16000);
+            const formData = new FormData();
+            formData.append('audio', wavBlob, 'recording.wav');
+
+            const response = await fetch('/transcribe-offline', { method: 'POST', body: formData });
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({ detail: 'Transcription failed' }));
+                throw new Error(err.detail);
+            }
+            const data = await response.json();
+            return data.text;
+        }
+
+        const languageNames = {
+            'auto': 'Auto Detect', 'en': 'English', 'es': 'Spanish', 'fr': 'French',
+            'de': 'German', 'it': 'Italian', 'pt': 'Portuguese', 'zh': 'Chinese',
+            'ja': 'Japanese', 'ko': 'Korean', 'ar': 'Arabic', 'hi': 'Hindi', 'ru': 'Russian'
+        };
+
+        function updateLanguageInfo() {
+            const selectedLang = languageSelect.value;
+            const langName = languageNames[selectedLang];
+            if (selectedLang === 'auto') {
+                languageInfo.textContent = 'Language: Auto Detect — I\'ll identify your language automatically';
+                welcomeLanguageInfo.textContent = 'Language: Auto Detect — I\'ll identify your language automatically';
+            } else {
+                languageInfo.textContent = `Language: ${langName} — Questions will be processed in ${langName}`;
+                welcomeLanguageInfo.textContent = `Language: ${langName} — Questions will be processed in ${langName}`;
+            }
+            const placeholders = {
+                'auto': 'Ask about your documents in any language…',
+                'en': 'Ask about your documents in English…',
+                'es': 'Pregunta sobre tus documentos en español…',
+                'fr': 'Interrogez vos documents en français…',
+                'de': 'Fragen Sie zu Ihren Dokumenten auf Deutsch…',
+                'it': 'Fai domande sui tuoi documenti in italiano…',
+                'pt': 'Pergunte sobre seus documentos em português…',
+                'zh': '用中文询问您的文档…',
+                'ja': '日本語で文書について質問してください…',
+                'ko': '한국어로 문서에 대해 질문하세요…',
+                'ar': 'اسأل عن مستنداتك باللغة العربية…',
+                'hi': 'हिंदी में अपने दस्तावेज़ों के बारे में पूछें…',
+                'ru': 'Спрашивайте о ваших документах на русском…'
+            };
+            questionInput.placeholder = placeholders[selectedLang] || placeholders['auto'];
+        }
+
+        languageSelect.addEventListener('change', updateLanguageInfo);
+
+        function checkBrowserCompatibility() {
+            const isChrome = !!window.chrome;
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            if (!isChrome && !isSafari) {
+                browserWarning.style.display = 'block';
+                browserWarning.textContent = 'Voice input may not work in this browser. Use Chrome, Edge, or Safari for best results.';
+            } else {
+                browserWarning.style.display = 'block';
+                browserWarning.textContent = 'Click the microphone button and speak. Allow microphone permissions when prompted.';
+                browserWarning.style.background = 'rgba(16, 185, 129, 0.06)';
+                browserWarning.style.borderColor = 'rgba(16, 185, 129, 0.15)';
+                browserWarning.style.color = 'var(--secondary)';
+            }
+        }
+
+        function startSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.');
+                return false;
+            }
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = getSpeechRecognitionLanguage();
+            recognition.start();
+            isRecording = true;
+            micBtn.classList.add('recording');
+            showRecordingIndicator();
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) finalTranscript += transcript;
+                    else interimTranscript += transcript;
+                }
+                questionInput.value = finalTranscript || interimTranscript;
+                questionInput.style.height = 'auto';
+                questionInput.style.height = questionInput.scrollHeight + 'px';
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                micBtn.classList.remove('recording');
+                hideRecordingIndicator();
+                if (!questionInput.value.trim()) addMessage('No speech was detected. Please try again.', 'ai', true);
+            };
+
+            recognition.onerror = (event) => {
+                isRecording = false;
+                micBtn.classList.remove('recording');
+                hideRecordingIndicator();
+                const errMap = {
+                    'not-allowed': 'Microphone permission denied. Allow microphone access in your browser settings.',
+                    'permission-denied': 'Microphone permission denied. Allow microphone access in your browser settings.',
+                    'no-speech': 'No speech detected. Please try again.',
+                    'audio-capture': 'No microphone found. Please connect a microphone.',
+                    'network': 'Network error during speech recognition.'
+                };
+                addMessage(errMap[event.error] || `Error: ${event.error}`, 'ai', true);
+            };
+
+            return true;
+        }
+
+        function getSpeechRecognitionLanguage() {
+            const langMap = {
+                'auto': 'en-US', 'en': 'en-US', 'es': 'es-ES', 'fr': 'fr-FR',
+                'de': 'de-DE', 'it': 'it-IT', 'pt': 'pt-BR', 'zh': 'zh-CN',
+                'ja': 'ja-JP', 'ko': 'ko-KR', 'ar': 'ar-SA', 'hi': 'hi-IN', 'ru': 'ru-RU'
+            };
+            return langMap[currentLanguage] || 'en-US';
+        }
+
+        function stopSpeechRecognition() {
+            if (recognition) recognition.stop();
+            isRecording = false;
+            micBtn.classList.remove('recording');
+            hideRecordingIndicator();
+        }
+
+        function showRecordingIndicator(msg) {
+            const indicator = document.createElement('div');
+            indicator.className = 'recording-indicator';
+            indicator.id = 'recording-indicator';
+            indicator.innerHTML = '<div class="recording-dot"></div>' + (msg || 'Listening… click to stop');
+            document.querySelector('.chat-input-form').appendChild(indicator);
+        }
+
+        function hideRecordingIndicator() {
+            const indicator = document.getElementById('recording-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        micBtn.addEventListener('click', async () => {
+            // Stop offline recording and transcribe
+            if (offlineRecording) {
+                micBtn.classList.remove('recording');
+                hideRecordingIndicator();
+                micBtn.disabled = true;
+                try {
+                    const text = await stopOfflineRecordingAndTranscribe();
+                    questionInput.value = text;
+                    questionInput.style.height = 'auto';
+                    questionInput.style.height = questionInput.scrollHeight + 'px';
+                    questionInput.focus();
+                } catch (err) {
+                    addMessage('Offline transcription error: ' + err.message, 'ai', true);
+                } finally {
+                    micBtn.disabled = false;
+                }
+                return;
+            }
+            // Stop online recording
+            if (isRecording) {
+                stopSpeechRecognition();
+                return;
+            }
+            // Request mic access, then choose online vs offline
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (error) {
+                addMessage('Could not access microphone. Check browser permissions and allow microphone access.', 'ai', true);
+                return;
+            }
+            if (navigator.onLine) {
+                stream.getTracks().forEach(t => t.stop());
+                startSpeechRecognition();
+            } else {
+                await startOfflineRecording(stream);
+                micBtn.classList.add('recording');
+                showRecordingIndicator('Offline mode — click to transcribe');
+            }
+        });
+
+        attachmentBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async (event) => {
+            const files = Array.from(event.target.files);
+            for (const file of files) await uploadImage(file);
+            fileInput.value = '';
+        });
+
+        async function uploadImage(file) {
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await fetch('/upload-image', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error('Image upload failed');
+                const data = await response.json();
+                addAttachment(data);
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                alert('Error uploading image. Please try again.');
+            }
+        }
+
+        function addAttachment(attachmentData) {
+            attachments.push(attachmentData);
+            const el = document.createElement('div');
+            el.className = 'attachment-preview';
+            el.innerHTML = `
+                <img src="${attachmentData.image_data}" alt="${attachmentData.filename}">
+                <button type="button" class="remove-attachment" onclick="removeAttachment(${attachments.length - 1})">×</button>`;
+            attachmentsContainer.appendChild(el);
+        }
+
+        window.removeAttachment = (index) => {
+            attachments.splice(index, 1);
+            renderAttachments();
+        };
+
+        function renderAttachments() {
+            attachmentsContainer.innerHTML = '';
+            attachments.forEach((attachment, index) => {
+                const el = document.createElement('div');
+                el.className = 'attachment-preview';
+                el.innerHTML = `
+                    <img src="${attachment.image_data}" alt="${attachment.filename}">
+                    <button type="button" class="remove-attachment" onclick="removeAttachment(${index})">×</button>`;
+                attachmentsContainer.appendChild(el);
+            });
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            currentLanguage = languageSelect.value;
+            addMessage(question, 'user');
+
+            const langName = languageNames[currentLanguage];
+            const langInfoElement = document.createElement('div');
+            langInfoElement.className = 'language-info';
+            langInfoElement.textContent = `Language: ${langName}`;
+            chatMessages.lastChild.appendChild(langInfoElement);
+
+            if (attachments.length > 0) {
+                const attachmentsHTML = attachments.map(att =>
+                    `<div class="attachment-preview"><img src="${att.image_data}" alt="${att.filename}"></div>`).join('');
+                const attachmentMessage = document.createElement('div');
+                attachmentMessage.className = 'attachments-section';
+                attachmentMessage.innerHTML = `<div class="image-grid">${attachmentsHTML}</div>`;
+                chatMessages.lastChild.appendChild(attachmentMessage);
+            }
+
+            questionInput.value = '';
+            attachments = [];
+            renderAttachments();
+            questionInput.style.height = 'auto';
+            submitBtn.disabled = true;
+            questionInput.disabled = true;
+            micBtn.disabled = true;
+            attachmentBtn.disabled = true;
+            languageSelect.disabled = true;
+
+            const typingIndicator = showTypingIndicator();
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, language: currentLanguage }),
+                });
+
+                chatMessages.removeChild(typingIndicator);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Server error' }));
+                    throw new Error(errorData.detail || 'Something went wrong');
+                }
+
+                const data = await response.json();
+                addMessage(data.answer, 'ai');
+
+            } catch (error) {
+                if (chatMessages.contains(typingIndicator)) chatMessages.removeChild(typingIndicator);
+                addMessage(`<strong>Error:</strong> ${error.message}`, 'ai', true);
+            } finally {
+                submitBtn.disabled = false;
+                questionInput.disabled = false;
+                micBtn.disabled = false;
+                attachmentBtn.disabled = false;
+                languageSelect.disabled = false;
+                questionInput.focus();
+            }
+        });
+
+        const addMessage = (content, sender, isError = false) => {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('message', sender);
+            if (isError) messageWrapper.classList.add('error');
+
+            const avatar = document.createElement('div');
+            avatar.classList.add('message-avatar');
+
+            if (sender === 'user') {
+                avatar.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+            } else {
+                avatar.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 1 8 8v4a8 8 0 0 1-16 0v-4a8 8 0 0 1 8-8z"/><path d="M9 12h.01M15 12h.01M9.5 15.5a3.5 3.5 0 0 0 5 0"/></svg>`;
+            }
+
+            const messageContent = document.createElement('div');
+            messageContent.classList.add('message-content');
+            messageContent.innerHTML = content;
+
+            messageWrapper.appendChild(avatar);
+            messageWrapper.appendChild(messageContent);
+            chatMessages.appendChild(messageWrapper);
+
+            setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 100);
+            return messageWrapper;
+        };
+
+        const showTypingIndicator = () => {
+            return addMessage('<div class="typing-indicator"><span></span><span></span><span></span></div>', 'ai');
+        };
+
+        const toggleImageSize = (event) => {
+            event.stopPropagation();
+            const img = event.target;
+            if (!img.classList.contains('enlarged-image')) {
+                const clonedImg = img.cloneNode(true);
+                clonedImg.classList.add('enlarged-image');
+                overlay.innerHTML = '';
+                overlay.appendChild(clonedImg);
+                overlay.classList.add('active');
+                clonedImg.addEventListener('click', (e) => { e.stopPropagation(); closeImage(); });
+            }
+        };
+
+        const closeImage = () => {
+            overlay.classList.remove('active');
+            overlay.innerHTML = '';
+        };
+
+        overlay.addEventListener('click', closeImage);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (pdfModal.classList.contains('active')) closePdf();
+                else closeImage();
+            } else if (pdfModal.classList.contains('active')) {
+                if (e.key === 'ArrowLeft') changePdfPage(-1);
+                else if (e.key === 'ArrowRight') changePdfPage(1);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('.image-result img') && !e.target.classList.contains('enlarged')) {
+                toggleImageSize(e);
+            }
+        });
+
+        questionInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                form.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        questionInput.addEventListener('input', () => {
+            questionInput.style.height = 'auto';
+            questionInput.style.height = `${questionInput.scrollHeight}px`;
+        });
+
+        // ── PDF Viewer ────────────────────────────────────────────
+        let currentPdfUrl = '';
+        let currentPage = 1;
+        let totalPages = 1;
+
+        const pdfModal = document.createElement('div');
+        pdfModal.className = 'pdf-modal';
+        pdfModal.innerHTML = `
+            <div class="pdf-modal-header">
+                <div class="pdf-modal-title" id="pdf-modal-title">Loading PDF…</div>
+                <div class="pdf-modal-controls">
+                    <div class="pdf-page-nav">
+                        <button class="pdf-control-btn" id="pdf-prev-btn" onclick="changePdfPage(-1)">← Prev</button>
+                        <input type="number" class="pdf-page-input" id="pdf-page-input" value="1" min="1" onchange="goToPdfPage(this.value)">
+                        <span style="color: var(--text-muted); font-size: 0.78rem;">/ <span id="pdf-total-pages">1</span></span>
+                        <button class="pdf-control-btn" id="pdf-next-btn" onclick="changePdfPage(1)">Next →</button>
+                    </div>
+                    <button class="pdf-control-btn" onclick="downloadPdf()">Download</button>
+                    <button class="pdf-modal-close" onclick="closePdf()">✕ Close</button>
+                </div>
+            </div>
+            <div class="pdf-modal-content">
+                <div class="pdf-loading" id="pdf-loading">
+                    <div class="pdf-loading-spinner"></div>
+                    <div>Loading document…</div>
+                </div>
+                <div class="pdf-viewer" id="pdf-viewer" style="display: none;">
+                    <iframe id="pdf-frame" src=""></iframe>
+                </div>
+            </div>`;
+        document.body.appendChild(pdfModal);
+
+        function openPdf(filePath, page = 1) {
+            currentPdfUrl = `/serve-pdf?file_path=${encodeURIComponent(filePath)}`;
+            currentPage = page || 1;
+            pdfModal.classList.add('active');
+            document.getElementById('pdf-modal-title').textContent = filePath.split('/').pop() || filePath.split('\\').pop();
+            document.getElementById('pdf-loading').style.display = 'flex';
+            document.getElementById('pdf-viewer').style.display = 'none';
+            document.getElementById('pdf-frame').src = `${currentPdfUrl}#page=${currentPage}`;
+            setTimeout(() => {
+                document.getElementById('pdf-loading').style.display = 'none';
+                document.getElementById('pdf-viewer').style.display = 'block';
+                updatePageControls();
+            }, 1000);
+        }
+
+        function closePdf() {
+            pdfModal.classList.remove('active');
+            document.getElementById('pdf-frame').src = '';
+            currentPdfUrl = '';
+            currentPage = 1;
+        }
+
+        function changePdfPage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                document.getElementById('pdf-page-input').value = currentPage;
+                document.getElementById('pdf-frame').src = `${currentPdfUrl}#page=${currentPage}`;
+                updatePageControls();
+            }
+        }
+
+        function goToPdfPage(page) {
+            const pageNum = parseInt(page);
+            if (pageNum >= 1 && pageNum <= totalPages) {
+                currentPage = pageNum;
+                document.getElementById('pdf-frame').src = `${currentPdfUrl}#page=${currentPage}`;
+                updatePageControls();
+            } else {
+                document.getElementById('pdf-page-input').value = currentPage;
+            }
+        }
+
+        function updatePageControls() {
+            document.getElementById('pdf-page-input').value = currentPage;
+            document.getElementById('pdf-prev-btn').disabled = currentPage <= 1;
+            document.getElementById('pdf-next-btn').disabled = currentPage >= totalPages;
+        }
+
+        function downloadPdf() {
+            if (currentPdfUrl) {
+                const link = document.createElement('a');
+                link.href = currentPdfUrl.replace('/serve-pdf?', '/serve-pdf?download=true&');
+                link.download = currentPdfUrl.split('/').pop() || 'document.pdf';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        function trackCitationClick(source, page) {
+            fetch('/track-citation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source, page, timestamp: new Date().toISOString() })
+            }).catch(() => {});
+        }
+
+        const originalOpenPdf = openPdf;
+        openPdf = function(filePath, page = 1) {
+            trackCitationClick(filePath, page);
+            originalOpenPdf(filePath, page);
+        };
+
+        window.addEventListener('load', () => {
+            questionInput.focus();
+            checkBrowserCompatibility();
+            updateLanguageInfo();
+            welcomeLanguageInfo.style.display = 'block';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+# --- Core backend ---
+fastapi
+uvicorn
+
+# --- LLM + LangChain ---
+langchain
+langchain-community
+huggingface_hub
+transformers
+
+# --- Embeddings & Vector Store ---
+# Use faiss-gpu if you have CUDA; faiss-cpu as fallback
+faiss
+sentence-transformers
+
+# --- PDF and file handling ---
+PyMuPDF
+python-multipart
+
+# --- Image processing / CLIP ---
+Pillow
+torch
+torchvision
+torchaudio
+
+# --- Utilities ---
+numpy
+requests
+
+# --- Optional: if you add intent detection or CLIP-based image retrieval ---
+open_clip_torch
+scikit-learn
+
+# --- Offline speech-to-text (no internet required after first model download) ---
+faster-whisper
