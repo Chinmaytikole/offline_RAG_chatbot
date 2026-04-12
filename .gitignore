@@ -37,6 +37,8 @@ venv.bak/
 uploads/
 vector_store/
 whisper_model/
+pageindex_data/
+images/
 *.zip
 
 # Local Editor / IDE / Agent specific

@@ -1270,7 +1270,47 @@
                 }
 
                 const data = await response.json();
-                addMessage(data.answer, 'ai');
+                
+                if (data.pageindex && data.pageindex.answer) {
+                    const combinedHtml = `
+                    <div class="dual-answer-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="vector-answer">
+                            <h4 style="color:var(--primary); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.4rem; font-size:0.85rem;text-transform:uppercase;letter-spacing:0.5px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                                Standard Vector Search
+                            </h4>
+                            <div style="font-size:0.95rem;">${data.answer}</div>
+                        </div>
+                        
+                        <div style="border-top: 1px dashed var(--border);"></div>
+                        
+                        <div class="pageindex-answer">
+                            <h4 style="color:#10b981; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.4rem; font-size:0.85rem;text-transform:uppercase;letter-spacing:0.5px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                PageIndex Tree Search
+                            </h4>
+                            
+                            <details style="margin-bottom:0.8rem; background:rgba(0,0,0,0.15); padding:0.5rem; border-radius:6px; border:1px solid var(--border);">
+                                <summary style="cursor:pointer; font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">View AI Thinking Process</summary>
+                                <div style="margin-top:0.6rem; font-size:0.85rem; color:var(--text-secondary); white-space:pre-wrap; border-left: 2px solid #10b981; padding-left: 0.6rem;">${data.pageindex.thinking || "No thinking process available."}</div>
+                            </details>
+                            
+                            <div style="font-size:0.95rem;">${data.pageindex.answer}</div>
+                            
+                            ${data.pageindex.sections && data.pageindex.sections.length > 0 ? 
+                                `<div style="margin-top:1rem; padding: 0.6rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px; font-size:0.8rem; color:var(--text-secondary);">
+                                    <strong style="color:#10b981;">Relevant Sections from Tree:</strong><br/>
+                                    <div style="margin-top: 0.3rem;">• ` + data.pageindex.sections.join('<br> • ') + `</div>
+                                </div>` 
+                                : ''}
+                        </div>
+                    </div>
+                    `;
+                    addMessage(combinedHtml, 'ai');
+                } else {
+                    addMessage(data.answer, 'ai');
+                }
+
 
             } catch (error) {
                 if (chatMessages.contains(typingIndicator)) chatMessages.removeChild(typingIndicator);

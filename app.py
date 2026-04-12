@@ -21,6 +21,13 @@ import audioop
 
 # Import the PDFIngestor class
 from ingest import PDFIngestor
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Import PageIndexService
+from pageindex_service import PageIndexService
 
 # Try to import speech recognition, provide fallback if not available
 try:
@@ -95,6 +102,7 @@ db = None
 client = None
 ingestion_in_progress = False
 embeddings_created = False
+pageindex_service = None
 
 # Initialize PDFIngestor
 pdf_ingestor = PDFIngestor(data_path=UPLOADS_PATH, db_faiss_path=DB_FAISS_PATH, image_dir=IMAGE_DIR)
@@ -106,8 +114,16 @@ multilingual_embeddings = SentenceTransformerEmbeddings(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global db, client, embeddings_created
+    global db, client, embeddings_created, pageindex_service
     print("🚀 Starting Multilingual RAG Q&A System...")
+    
+    # Initialize PageIndex Service explicitly configured to route to Jan AI
+    pageindex_service = PageIndexService(
+        pageindex_api_key=os.getenv("PAGEINDEX_API_KEY"),
+        openai_api_key=os.getenv("JAN_API_KEY", "123456"), # Default to what was in app.py
+        openai_model=os.getenv("JAN_MODEL", "Qwen2_5-VL-7B-Instruct-UD-Q5_K_XL"),     # Specific Jan model needed
+        openai_base_url=os.getenv("JAN_BASE_URL", "http://localhost:1337/v1")
+    )
 
     # Check if vector store exists and load it
     if os.path.exists(DB_FAISS_PATH) and os.listdir(DB_FAISS_PATH):
@@ -132,11 +148,16 @@ async def lifespan(app: FastAPI):
     # Connect to local Jan LLM (use a multilingual model)
     try:
         from openai import OpenAI
-        client = OpenAI(base_url="http://localhost:1337/v1", api_key="sanika@11")
+        client = OpenAI(base_url="http://localhost:1337/v1", api_key="123456")
         print("✅ Jan client initialized")
     except ImportError:
         print("⚠️ OpenAI client not available")
         client = None
+
+    # Start background indexing for PageIndex
+    if pageindex_service and pageindex_service.available:
+        print("⏳ Starting PageIndex background indexing...")
+        threading.Thread(target=pageindex_service.index_all_pdfs, args=(UPLOADS_PATH,), daemon=True).start()
 
     yield
 
@@ -212,6 +233,11 @@ def run_ingestion():
         if success:
             embeddings_created = True
             print("✅ Ingestion completed successfully")
+            
+            # Start PageIndex ingestion in background if available
+            if pageindex_service and pageindex_service.available:
+                print("🔄 Starting PageIndex tree-indexing...")
+                threading.Thread(target=pageindex_service.index_all_pdfs, args=(UPLOADS_PATH,), daemon=True).start()
         else:
             print("❌ Ingestion failed")
             
@@ -361,6 +387,11 @@ async def delete_file(background_tasks: BackgroundTasks, request: dict):
         folder_path = os.path.join(UPLOADS_PATH, folder)
         if not os.listdir(folder_path):
             os.rmdir(folder_path)
+            
+        # Remove from PageIndex manifest
+        abs_file_path = os.path.abspath(file_path)
+        if pageindex_service:
+            pageindex_service.remove_document(abs_file_path)
         
         # Trigger ingestion in background
         background_tasks.add_task(trigger_ingestion_background)
@@ -828,8 +859,20 @@ async def ask_question(query: QueryRequest):
     if citations and (query_intent["needs_text"] or query_intent["primary_intent"] == "both"):
         citations_section = format_citations(citations, detected_lang)
         final_answer += citations_section
+        
+    # --- Integration of PageIndex (Vectorless) RAG ---
+    pageindex_response = None
+    if pageindex_service and pageindex_service.available:
+        print("🔍 Querying PageIndex (Vectorless RAG)...")
+        try:
+            pageindex_response = pageindex_service.build_answer(question, detected_lang)
+        except Exception as e:
+            print(f"⚠️ PageIndex retrieval failed: {e}")
     
-    return {"answer": final_answer}
+    return {
+        "answer": final_answer,
+        "pageindex": pageindex_response
+    }
 
 def analyze_query_intent(question, language='en'):
     """Analyze what the user wants - text, images, or both with multilingual support"""
@@ -1106,7 +1149,7 @@ Resposta:""",
 
     try:
         response = client.chat.completions.create(
-            model="qwen2-7b-instruct-q5_k_m",  # Use a multilingual model
+            model="Qwen2_5-VL-7B-Instruct-UD-Q5_K_XL",  # Use a multilingual model
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=400

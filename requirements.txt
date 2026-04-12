@@ -33,3 +33,6 @@ scikit-learn
 
 # --- Offline speech-to-text (no internet required after first model download) ---
 faster-whisper
+pageindex
+python-dotenv
+openai
