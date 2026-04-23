@@ -18,7 +18,7 @@ def test_vectordb():
     try:
         # Import required libraries
         from langchain_community.vectorstores import FAISS
-        from langchain_community.embeddings import SentenceTransformerEmbeddings
+        from langchain_huggingface import HuggingFaceEmbeddings
         import numpy as np
         
         print("🔍 VectorDB Test Script")
@@ -38,7 +38,7 @@ def test_vectordb():
         
         # Load embeddings
         print("🔄 Loading embeddings model...")
-        embeddings = SentenceTransformerEmbeddings(model_name=MODEL_NAME)
+        embeddings = HuggingFaceEmbeddings(model_name=MODEL_NAME)
         
         # Load vector store
         print("🔄 Loading vector database...")
@@ -150,7 +150,7 @@ def quick_test():
     """Quick test function for basic verification"""
     try:
         from langchain_community.vectorstores import FAISS
-        from langchain_community.embeddings import SentenceTransformerEmbeddings
+        from langchain_huggingface import HuggingFaceEmbeddings
         
         print("🚀 Quick VectorDB Test")
         print("=" * 30)
@@ -162,7 +162,7 @@ def quick_test():
             return False
         
         # Load database
-        embeddings = SentenceTransformerEmbeddings(
+        embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         )
         db = FAISS.load_local(DB_FAISS_PATH, embeddings=embeddings, allow_dangerous_deserialization=True)
@@ -197,10 +197,10 @@ if __name__ == "__main__":
             # Run a single query from command line
             try:
                 from langchain_community.vectorstores import FAISS
-                from langchain_community.embeddings import SentenceTransformerEmbeddings
+                from langchain_huggingface import HuggingFaceEmbeddings
                 
                 DB_FAISS_PATH = "vector_store"
-                embeddings = SentenceTransformerEmbeddings(
+                embeddings = HuggingFaceEmbeddings(
                     model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
                 )
                 db = FAISS.load_local(DB_FAISS_PATH, embeddings=embeddings, allow_dangerous_deserialization=True)

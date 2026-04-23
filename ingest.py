@@ -317,17 +317,24 @@
 
 
 
-# ingest.py
 import os
 import shutil
 import json
+import sys
 from pathlib import Path
+
+# Fix Windows console emoji printing issues
+if sys.stdout and getattr(sys.stdout, 'encoding', '').lower() != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
 
 from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain.schema import Document
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from sentence_transformers import SentenceTransformer
 from PIL import Image
 import fitz  # PyMuPDF
@@ -344,7 +351,7 @@ class PDFIngestor:
         os.makedirs(self.DB_FAISS_PATH, exist_ok=True)
         
         # Initialize multilingual embedding model
-        self.embeddings = SentenceTransformerEmbeddings(
+        self.embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         )
 
@@ -500,12 +507,12 @@ class PDFIngestor:
 
         # Always clean up existing vector store and images
         if os.path.exists(self.DB_FAISS_PATH):
-            shutil.rmtree(self.DB_FAISS_PATH)
+            shutil.rmtree(self.DB_FAISS_PATH, ignore_errors=True)
             print("🗑️ Removed existing vector store.")
         
         # Clean up images directory
         if os.path.exists(self.IMAGE_DIR):
-            shutil.rmtree(self.IMAGE_DIR)
+            shutil.rmtree(self.IMAGE_DIR, ignore_errors=True)
             print("🗑️ Removed existing images.")
         
         # Recreate directories

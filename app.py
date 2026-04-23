@@ -1,8 +1,16 @@
 import os
 import io
+import sys
 import base64
 import shutil
 import threading
+
+# Fix Windows console emoji printing issues
+if sys.stdout and getattr(sys.stdout, 'encoding', '').lower() != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
 from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, BackgroundTasks
@@ -11,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 import numpy as np
 from PIL import Image
 import tempfile
@@ -108,7 +116,7 @@ pageindex_service = None
 pdf_ingestor = PDFIngestor(data_path=UPLOADS_PATH, db_faiss_path=DB_FAISS_PATH, image_dir=IMAGE_DIR)
 
 # Multilingual embeddings model
-multilingual_embeddings = SentenceTransformerEmbeddings(
+multilingual_embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 )
 
@@ -125,8 +133,13 @@ async def lifespan(app: FastAPI):
         openai_base_url=os.getenv("JAN_BASE_URL", "http://localhost:1337/v1")
     )
 
-    # Check if vector store exists and load it
-    if os.path.exists(DB_FAISS_PATH) and os.listdir(DB_FAISS_PATH):
+    # Rebuild vector store from scratch on startup
+    print("🔄 Rebuilding vector store from scratch on startup...")
+    
+    # Run ingestion synchronously to ensure it's ready before server accepts requests
+    success = pdf_ingestor.run_ingestion()
+    
+    if success and os.path.exists(DB_FAISS_PATH) and os.listdir(DB_FAISS_PATH):
         try:
             db = FAISS.load_local(DB_FAISS_PATH, embeddings=multilingual_embeddings, allow_dangerous_deserialization=True)
             embeddings_created = True
@@ -142,7 +155,7 @@ async def lifespan(app: FastAPI):
             print(f"⚠️ Error loading vector store: {e}")
             embeddings_created = False
     else:
-        print("⚠️ Vector store not found or empty. Please add files and create embeddings first.")
+        print("⚠️ Vector store not found or ingestion failed. Please add files to the 'uploads' directory.")
         embeddings_created = False
 
     # Connect to local Jan LLM (use a multilingual model)
