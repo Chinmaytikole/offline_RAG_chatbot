@@ -25,12 +25,14 @@ Upload PDFs, build a local vector store, and ask questions in **multiple languag
 offline_RAG_chatbot/
 ├── app.py              # FastAPI application (main entry point)
 ├── ingest.py           # PDF ingestion & FAISS vector store builder
+├── install.bat         # One-time setup: venv + dependencies + Whisper model download
+├── run.bat             # Start the app (activates venv and launches server)
 ├── requirements.txt    # Python dependencies
 ├── templates/          # Jinja2 HTML templates (home.html, index.html)
 ├── uploads/            # Your PDF files go here (organised in subfolders)
 ├── vector_store/       # Auto-generated FAISS index (do not commit)
 ├── images/             # Auto-extracted PDF images (do not commit)
-└── whisper_model/      # Cached Whisper model (do not commit)
+└── whisper_model/      # Cached Whisper model — downloaded by install.bat (do not commit)
 ```
 
 ---
@@ -49,30 +51,27 @@ git clone https://github.com/<your-username>/offline_RAG_chatbot.git
 cd offline_RAG_chatbot
 ```
 
-### 3. Create & Activate a Virtual Environment
+### 3. Install (one time)
 
-```bash
-python -m venv .venv
+Double-click **`install.bat`** or run it from a terminal:
 
-# Windows
-.venv\Scripts\activate
-
-# macOS / Linux
-source .venv/bin/activate
+```bat
+install.bat
 ```
 
-### 4. Install Dependencies
+This will:
+- Create a Python virtual environment in `.venv/`
+- Install all dependencies from `requirements.txt`
+- Download the Whisper `base` speech model (~145 MB) from Hugging Face into `whisper_model/`
 
-```bash
-pip install -r requirements.txt
-```
+> **Note:** An internet connection is required for this step. After setup, the app runs fully offline.
 
-> **Note:** `torch`, `torchvision`, and `torchaudio` can be large. If you don't have a GPU, the CPU versions work fine.
+### 4. Start the App
 
-### 5. Start the Server
+Double-click **`run.bat`** or run it from a terminal:
 
-```bash
-uvicorn app:app --reload --host 127.0.0.1 --port 8000
+```bat
+run.bat
 ```
 
 Open your browser at **http://127.0.0.1:8000**
@@ -105,8 +104,8 @@ Open your browser at **http://127.0.0.1:8000**
 
 Voice transcription uses **faster-whisper** with a local `base` Whisper model.
 
-- On **first use**, the model (~145 MB) is downloaded from Hugging Face and cached in `whisper_model/`
-- After that, transcription works **completely offline**
+- The model (~145 MB) is downloaded automatically by `install.bat` and cached in `whisper_model/`
+- Transcription works **completely offline** with no further downloads needed
 - The model is cached locally to avoid Windows symlink permission errors
 
 ---
@@ -154,7 +153,7 @@ To change the **embedding model**, update `model_name` in both `app.py` and `ing
 
 - **Python 3.13**: The `audioop` module used by `SpeechRecognition` was removed. Use Python 3.10–3.12.
 - **Large PDFs**: Ingestion time scales with PDF size and image count. The vector store is rebuilt from scratch on every ingestion.
-- **First Whisper use**: Requires internet to download the model. Subsequent uses are fully offline.
+- **Whisper model**: Requires internet during `install.bat` to download the model. After that, fully offline.
 
 ---
 
