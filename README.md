@@ -48,15 +48,35 @@ offline_RAG_chatbot/
 
 Jan AI runs a local LLM server on your machine that the chatbot uses to generate answers.
 
-1. Download and install **Jan** from [jan.ai](https://jan.ai/)
-2. Open Jan and go to the **Hub** tab
-3. Download a model — recommended for most machines:
-   - **Llama 3.2 3B** (fast, low RAM) — good for 8 GB RAM
-   - **Llama 3.1 8B** (better quality) — good for 16 GB+ RAM
-   - Any GGUF model labelled `Q4` or `Q5` works well
-4. Once downloaded, go to the **Local API Server** tab (left sidebar)
-5. Select your downloaded model from the dropdown
-6. Click **Start Server** — Jan will listen on `http://localhost:1337/v1`
+1. Download and install **Jan** from [jan.ai](https://jan.ai/), then open it.
+
+2. Click **Hub** in the bottom-left sidebar.
+
+   ![Step 1 – Open Hub](janai_steps/step1.png)
+
+3. Search for a model and click **Download**. Recommended: any `Q4` or `Q5` GGUF model (e.g. `Qwen2.5-VL-7B-Instruct-GGUF` for 8 GB+ RAM, or a smaller 3B model for lower-end machines).
+
+   ![Step 2 – Download a model](janai_steps/step2.png)
+
+4. Wait for the download to complete — progress shows in the bottom bar.
+
+   ![Step 3 – Downloading](janai_steps/step3.png)
+
+5. Once downloaded, click the model name in the chat bar, then click the **settings gear** icon next to **Llama.Cpp** to open model settings.
+
+   ![Step 4 – Open model settings](janai_steps/step4.png)
+
+6. Find your downloaded model in the list and click **Start**.
+
+   ![Step 5 – Start the model](janai_steps/step5.png)
+
+7. In the left sidebar, click **Local API Server**.
+
+   ![Step 6 – Navigate to Local API Server](janai_steps/step6.png)
+
+8. The server runs on `127.0.0.1:1337` by default. Note the **API Key** shown — you may need it if `app.py` is configured to require one. Click **Start Server** if it isn't already running.
+
+   ![Step 7 – Local API Server running](janai_steps/step7.png)
 
 > **Keep Jan running** whenever you use the chatbot. You can minimise it to the system tray.
 
