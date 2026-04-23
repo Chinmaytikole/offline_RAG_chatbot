@@ -42,16 +42,32 @@ offline_RAG_chatbot/
 ### 1. Prerequisites
 
 - Python **3.10 – 3.12** (Python 3.13 is not yet supported — `audioop` is removed)
-- A running **local LLM server** compatible with the OpenAI API (e.g. [Jan](https://jan.ai/) or [LM Studio](https://lmstudio.ai/)) listening on `http://localhost:1337/v1`
+- **Jan AI** (or any OpenAI-compatible local LLM server) running on `http://localhost:1337/v1` — see setup below
 
-### 2. Clone the Repository
+### 2. Set Up Jan AI (Local LLM)
+
+Jan AI runs a local LLM server on your machine that the chatbot uses to generate answers.
+
+1. Download and install **Jan** from [jan.ai](https://jan.ai/)
+2. Open Jan and go to the **Hub** tab
+3. Download a model — recommended for most machines:
+   - **Llama 3.2 3B** (fast, low RAM) — good for 8 GB RAM
+   - **Llama 3.1 8B** (better quality) — good for 16 GB+ RAM
+   - Any GGUF model labelled `Q4` or `Q5` works well
+4. Once downloaded, go to the **Local API Server** tab (left sidebar)
+5. Select your downloaded model from the dropdown
+6. Click **Start Server** — Jan will listen on `http://localhost:1337/v1`
+
+> **Keep Jan running** whenever you use the chatbot. You can minimise it to the system tray.
+
+### 4. Clone the Repository
 
 ```bash
 git clone https://github.com/<your-username>/offline_RAG_chatbot.git
 cd offline_RAG_chatbot
 ```
 
-### 3. Install (one time)
+### 5. Install (one time)
 
 Double-click **`install.bat`** or run it from a terminal:
 
@@ -66,7 +82,7 @@ This will:
 
 > **Note:** An internet connection is required for this step. After setup, the app runs fully offline.
 
-### 4. Start the App
+### 6. Start the App
 
 Double-click **`run.bat`** or run it from a terminal:
 
